@@ -3,10 +3,38 @@ import { checkForUpdate, getCachedVersion, getLocalDevVersion } from "./checker"
 import { invalidatePackage } from "./cache"
 import { PACKAGE_NAME } from "./constants"
 import { log } from "../../shared/logger"
+import { getConfigLoadErrors, clearConfigLoadErrors } from "../../shared/config-errors"
 import type { AutoUpdateCheckerOptions } from "./types"
 
 export function createAutoUpdateCheckerHook(ctx: PluginInput, options: AutoUpdateCheckerOptions = {}) {
-  const { showStartupToast = true } = options
+  const { showStartupToast = true, isSisyphusEnabled = false } = options
+
+  const getToastMessage = (isUpdate: boolean, latestVersion?: string): string => {
+    if (isSisyphusEnabled) {
+      return isUpdate
+        ? `Sisyphus on steroids is steering OpenCode.\nv${latestVersion} available. Restart to apply.`
+        : `Sisyphus on steroids is steering OpenCode.`
+    }
+    return isUpdate
+      ? `OpenCode is now on Steroids. oMoMoMoMo...\nv${latestVersion} available. Restart OpenCode to apply.`
+      : `OpenCode is now on Steroids. oMoMoMoMo...`
+  }
+
+  const showVersionToast = async (version: string | null): Promise<void> => {
+    const displayVersion = version ?? "unknown"
+    await ctx.client.tui
+      .showToast({
+        body: {
+          title: `OhMyOpenCode ${displayVersion}`,
+          message: getToastMessage(false),
+          variant: "info" as const,
+          duration: 5000,
+        },
+      })
+      .catch(() => {})
+    log(`[auto-update-checker] Startup toast shown: v${displayVersion}`)
+  }
+
   let hasChecked = false
 
   return {
@@ -26,7 +54,7 @@ export function createAutoUpdateCheckerHook(ctx: PluginInput, options: AutoUpdat
           log("[auto-update-checker] Skipped: local development mode")
           if (showStartupToast) {
             const version = getLocalDevVersion(ctx.directory) ?? getCachedVersion()
-            await showVersionToast(ctx, version)
+            await showVersionToast(version)
           }
           return
         }
@@ -34,7 +62,7 @@ export function createAutoUpdateCheckerHook(ctx: PluginInput, options: AutoUpdat
         if (result.isPinned) {
           log(`[auto-update-checker] Skipped: version pinned to ${result.currentVersion}`)
           if (showStartupToast) {
-            await showVersionToast(ctx, result.currentVersion)
+            await showVersionToast(result.currentVersion)
           }
           return
         }
@@ -42,7 +70,7 @@ export function createAutoUpdateCheckerHook(ctx: PluginInput, options: AutoUpdat
         if (!result.needsUpdate) {
           log("[auto-update-checker] No update needed")
           if (showStartupToast) {
-            await showVersionToast(ctx, result.currentVersion)
+            await showVersionToast(result.currentVersion)
           }
           return
         }
@@ -53,7 +81,7 @@ export function createAutoUpdateCheckerHook(ctx: PluginInput, options: AutoUpdat
           .showToast({
             body: {
               title: `OhMyOpenCode ${result.latestVersion}`,
-              message: `OpenCode is now on Steroids. oMoMoMoMo...\nv${result.latestVersion} available. Restart OpenCode to apply.`,
+              message: getToastMessage(true, result.latestVersion ?? undefined),
               variant: "info" as const,
               duration: 8000,
             },
@@ -64,23 +92,30 @@ export function createAutoUpdateCheckerHook(ctx: PluginInput, options: AutoUpdat
       } catch (err) {
         log("[auto-update-checker] Error during update check:", err)
       }
+
+      await showConfigErrorsIfAny(ctx)
     },
   }
 }
 
-async function showVersionToast(ctx: PluginInput, version: string | null): Promise<void> {
-  const displayVersion = version ?? "unknown"
+async function showConfigErrorsIfAny(ctx: PluginInput): Promise<void> {
+  const errors = getConfigLoadErrors()
+  if (errors.length === 0) return
+
+  const errorMessages = errors.map(e => `${e.path}: ${e.error}`).join("\n")
   await ctx.client.tui
     .showToast({
       body: {
-        title: `OhMyOpenCode ${displayVersion}`,
-        message: "OpenCode is now on Steroids. oMoMoMoMo...",
-        variant: "info" as const,
-        duration: 5000,
+        title: "Config Load Error",
+        message: `Failed to load config:\n${errorMessages}`,
+        variant: "error" as const,
+        duration: 10000,
       },
     })
     .catch(() => {})
-  log(`[auto-update-checker] Startup toast shown: v${displayVersion}`)
+
+  log(`[auto-update-checker] Config load errors shown: ${errors.length} error(s)`)
+  clearConfigLoadErrors()
 }
 
 export type { UpdateCheckResult, AutoUpdateCheckerOptions } from "./types"

@@ -17,7 +17,7 @@ const AgentPermissionSchema = z.object({
 })
 
 export const BuiltinAgentNameSchema = z.enum([
-  "OmO",
+  "Sisyphus",
   "oracle",
   "librarian",
   "explore",
@@ -29,8 +29,8 @@ export const BuiltinAgentNameSchema = z.enum([
 export const OverridableAgentNameSchema = z.enum([
   "build",
   "plan",
-  "OmO",
-  "OmO-Plan",
+  "Sisyphus",
+  "Planner-Sisyphus",
   "oracle",
   "librarian",
   "explore",
@@ -84,8 +84,8 @@ export const AgentOverrideConfigSchema = z.object({
 export const AgentOverridesSchema = z.object({
   build: AgentOverrideConfigSchema.optional(),
   plan: AgentOverrideConfigSchema.optional(),
-  OmO: AgentOverrideConfigSchema.optional(),
-  "OmO-Plan": AgentOverrideConfigSchema.optional(),
+  Sisyphus: AgentOverrideConfigSchema.optional(),
+  "Planner-Sisyphus": AgentOverrideConfigSchema.optional(),
   oracle: AgentOverrideConfigSchema.optional(),
   librarian: AgentOverrideConfigSchema.optional(),
   explore: AgentOverrideConfigSchema.optional(),
@@ -102,8 +102,14 @@ export const ClaudeCodeConfigSchema = z.object({
   hooks: z.boolean().optional(),
 })
 
-export const OmoAgentConfigSchema = z.object({
+export const SisyphusAgentConfigSchema = z.object({
   disabled: z.boolean().optional(),
+})
+
+export const ExperimentalConfigSchema = z.object({
+  aggressive_truncation: z.boolean().optional(),
+  empty_message_recovery: z.boolean().optional(),
+  auto_resume: z.boolean().optional(),
 })
 
 export const OhMyOpenCodeConfigSchema = z.object({
@@ -114,7 +120,8 @@ export const OhMyOpenCodeConfigSchema = z.object({
   agents: AgentOverridesSchema.optional(),
   claude_code: ClaudeCodeConfigSchema.optional(),
   google_auth: z.boolean().optional(),
-  omo_agent: OmoAgentConfigSchema.optional(),
+  sisyphus_agent: SisyphusAgentConfigSchema.optional(),
+  experimental: ExperimentalConfigSchema.optional(),
 })
 
 export type OhMyOpenCodeConfig = z.infer<typeof OhMyOpenCodeConfigSchema>
@@ -122,6 +129,7 @@ export type AgentOverrideConfig = z.infer<typeof AgentOverrideConfigSchema>
 export type AgentOverrides = z.infer<typeof AgentOverridesSchema>
 export type AgentName = z.infer<typeof AgentNameSchema>
 export type HookName = z.infer<typeof HookNameSchema>
-export type OmoAgentConfig = z.infer<typeof OmoAgentConfigSchema>
+export type SisyphusAgentConfig = z.infer<typeof SisyphusAgentConfigSchema>
+export type ExperimentalConfig = z.infer<typeof ExperimentalConfigSchema>
 
 export { McpNameSchema, type McpName } from "../mcp/types"
